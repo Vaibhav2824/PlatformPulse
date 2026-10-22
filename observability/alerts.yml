@@ -2,10 +2,11 @@ groups:
   - name: platformpulse
     rules:
       - alert: AirflowTaskFailed
-        # second branch catches a task's *first* failure: a brand-new counter series has no increase()
+        # second branch catches a task's *first* failure: a brand-new counter series has no increase().
+        # "> 0" matters: on a fresh start Airflow creates failed series at 0, which aren't failures.
         expr: |
           (increase(airflow_ti_finish{state="failed"}[1m]) > 0)
-          or (airflow_ti_finish{state="failed"} unless airflow_ti_finish{state="failed"} offset 1m)
+          or ((airflow_ti_finish{state="failed"} > 0) unless airflow_ti_finish{state="failed"} offset 1m)
         labels: { severity: critical }
         annotations:
           summary: "Task {{ $labels.dag_id }}.{{ $labels.task_id }} failed"

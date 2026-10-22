@@ -19,6 +19,7 @@
   <img alt="MCP" src="https://img.shields.io/badge/MCP-6_tools-8B5CF6">
   <img alt="Slack" src="https://img.shields.io/badge/Slack-Bolt_·_Socket_Mode-4A154B?logo=slack&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/docker_compose-up-2496ED?logo=docker&logoColor=white">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-22c55e"></a>
 </p>
 
 <p align="center">
@@ -45,8 +46,8 @@ You run a small data platform, break it in one of four realistic ways, and watch
 5. 📊 **Measure.** Grafana shows platform health, MTTA/MTTR and how often the agent resolved things without a human.
 
 <p align="center">
-  <img src="docs/grafana-dashboard.png" alt="Grafana Customer Experience dashboard" width="92%"><br>
-  <sub>The provisioned Grafana "Customer Experience" dashboard during a live chaos run.</sub>
+  <img src="docs/demo.gif" alt="Demo: chaos.py oom → alert → incident → Slack → agent triage, with Grafana updating live" width="100%"><br>
+  <sub>A real, unedited run: <code>chaos.py oom</code> → alert at t+80s → posted to Slack → agent classifies <code>oom</code> in 24s, with Grafana updating live.<br>Frames were captured automatically from the running stack, and the thread text is the agent's actual output.</sub>
 </p>
 
 ## 📑 Table of contents
@@ -100,26 +101,40 @@ Measured, not estimated. [`pulse/eval.py`](pulse/eval.py) runs the full loop for
 | 📊 **CX metrics** | MTTA, MTTR, agent time-to-summary, support requests by category, and **deflection rate** |
 | 🪶 **Laptop-sized** | One `docker compose up`, about 5.8 GB of memory caps, about 2.2 GB idle, ₹0 to run |
 
+<p align="center">
+  <img src="docs/grafana-dashboard.png" alt="Grafana Customer Experience dashboard" width="92%"><br>
+  <sub>The provisioned Grafana "Customer Experience" dashboard: platform health, task outcomes, pool slots, incidents, support and agent latency.</sub>
+</p>
+
 ## 🏗 Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
+  CH["🧪 chaos.py<br/>oom · bad_schema · timeout · stuck"] -.->|breaks| AF
+
   subgraph Platform["🗄️ Mini data platform"]
-    AF["Airflow 2.10<br/>LocalExecutor"] -->|runs| SP["PySpark jobs<br/>local mode"]
-    TR["Trino 470"] -->|SQL| PG[("Airflow<br/>Postgres")]
-    AF --- PG
+    direction LR
+    AF["Airflow 2.10<br/>LocalExecutor"] -->|runs| SP["PySpark<br/>local mode"]
+    AF --- PG[("Airflow<br/>Postgres")]
+    TR["Trino 470"] -->|SQL| PG
   end
-  CH["🧪 chaos.py"] -.->|"oom · bad_schema<br/>timeout · stuck"| AF
-  AF -->|StatsD| SE["statsd-exporter"] --> PR["Prometheus<br/>5 rules"]
-  PR --> AM["Alertmanager"] -->|webhook| IS["Incident service<br/>FastAPI + SQLite"]
-  IS -->|/metrics| PR
-  PR --> GF["📊 Grafana CX"]
+
+  subgraph Obs["🔭 Observability"]
+    direction LR
+    SE["statsd-exporter"] --> PR["Prometheus<br/>5 alert rules"] --> AM["Alertmanager"]
+    PR --> GF["📊 Grafana CX"]
+  end
+
+  AF -->|StatsD| SE
+  AM -->|webhook| IS["🚨 Incident service<br/>FastAPI + SQLite"]
+  IS -->|"/metrics: MTTA · MTTR · deflection"| PR
+
   subgraph Pulse["🤖 pulse container"]
-    SL["Slack app<br/>Bolt · Socket Mode"] --> AG["Agent<br/>Groq gpt-oss"]
-    AG <-->|stdio| MCP["MCP server<br/>6 tools"]
+    direction LR
+    SL["Slack app<br/>Bolt · Socket Mode"] --> AG["Agent<br/>Groq gpt-oss"] <-->|stdio| MCP["MCP server · 6 read-only tools<br/>Prometheus · Airflow · incidents · Trino"]
   end
-  IS -->|poll new incidents| SL
-  MCP --> PR & AF & IS & TR
+
+  IS -->|new incidents| SL
   SL <--> SK(("💬 Slack"))
 ```
 
@@ -281,5 +296,5 @@ Other choices: the agent is **read-only by design** (it recommends and humans re
 ---
 
 <p align="center">
-  Built by <a href="https://github.com/Vaibhav2824">@Vaibhav2824</a> · <a href="#top">↑ back to top</a>
+  Built by <a href="https://github.com/Vaibhav2824">@Vaibhav2824</a> · <a href="LICENSE">MIT License</a> · <a href="#top">↑ back to top</a>
 </p>

@@ -35,5 +35,5 @@
 ## 6. Polish (4:30–5:00)
 - [x] README (setup, demo, numbers from eval), REVIEW_LOG, eval table
 - [x] SLIDES.md (5 slides), `notebooks/postmortem.ipynb`
-- [ ] Demo GIF (user, ScreenToGif)
+- [x] Demo GIF (docs/demo.gif, recorded from a real run)
 - **Cut order if late:** notebook → App Home → slides.

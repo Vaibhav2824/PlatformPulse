@@ -50,3 +50,12 @@ def test_support_requests_drive_deflection():
     client.patch(f"/support_requests/{sid}", json={"outcome": "escalated"})
     assert metric("pulse_deflection_ratio") == 0.5  # 1 agent-resolved incident, 1 escalated request
     assert client.get("/incidents/999").status_code == 404
+
+
+def test_eval_resolutions_excluded_from_metrics():
+    before = client.get("/metrics").text
+    client.post("/alertmanager", json=alert(fp="eval-run"))
+    iid = client.get("/incidents").json()[0]["id"]
+    client.post(f"/incidents/{iid}/resolve", params={"by": "eval"})
+    assert client.get(f"/incidents/{iid}").json()["resolved_by"] == "eval"
+    assert client.get("/metrics").text == before  # synthetic incident leaves every metric untouched

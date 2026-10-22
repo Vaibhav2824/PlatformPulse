@@ -56,7 +56,7 @@ def run_one(n, chaos_type):
             chaos.set_pool(chaos.POOL_SLOTS)
             time.sleep(STUCK_COOLDOWN_S)  # let the alert clear so the next stuck run opens a new incident
     correct = result["category"] == chaos_type
-    httpx.post(f"{INCIDENTS}/incidents/{inc['id']}/resolve", params={"by": "agent" if correct else "human"})
+    httpx.post(f"{INCIDENTS}/incidents/{inc['id']}/resolve", params={"by": "eval"})  # synthetic: not a deflection
     detect_s = round(inc["created_at"] - t0, 1)
     return {"model": MODEL, "run": n, "expected": chaos_type, "predicted": result["category"], "correct": correct,
             "incident_id": inc["id"], "detect_s": detect_s, "triage_s": triage_s,

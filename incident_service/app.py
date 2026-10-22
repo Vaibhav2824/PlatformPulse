@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS incidents (
   UNIQUE (fingerprint, starts_at));
 CREATE TABLE IF NOT EXISTS support_requests (
   id INTEGER PRIMARY KEY, user TEXT, question TEXT, category TEXT, outcome TEXT DEFAULT 'open', created_at REAL);
+-- eval-harness incidents are synthetic: kept for audit, excluded from customer-facing metrics
+CREATE VIEW IF NOT EXISTS real_incidents AS SELECT * FROM incidents WHERE resolved_by IS NOT 'eval';
 """
 
 
@@ -98,7 +100,7 @@ def ack(id_: int):
 
 
 @app.post("/incidents/{id_}/resolve")
-def resolve(id_: int, by: Literal["agent", "human"]):
+def resolve(id_: int, by: Literal["agent", "human", "eval"]):
     get_or_404("incidents", id_)
     now = time.time()
     q("UPDATE incidents SET status = 'resolved', resolved_at = COALESCE(resolved_at, ?), resolved_by = COALESCE(resolved_by, ?),"
@@ -138,19 +140,19 @@ def _label(v):
 def metrics():
     """Recomputed from the DB on every scrape, so it survives restarts."""
     one = lambda sql: q(sql)[0][0]  # noqa: E731
-    open_n = one("SELECT COUNT(*) n FROM incidents WHERE status != 'resolved'")["n"]
+    open_n = one("SELECT COUNT(*) n FROM real_incidents WHERE status != 'resolved'")["n"]
     lines = [f"pulse_incidents_open {open_n}"]
-    for r in q("SELECT category, status, COUNT(*) n FROM incidents GROUP BY 1, 2")[0]:
+    for r in q("SELECT category, status, COUNT(*) n FROM real_incidents GROUP BY 1, 2")[0]:
         lines.append(f'pulse_incidents_total{{category="{_label(r["category"])}",status="{r["status"]}"}} {r["n"]}')
     for r in q("SELECT category, outcome, COUNT(*) n FROM support_requests GROUP BY 1, 2")[0]:
         lines.append(f'pulse_support_requests_total{{category="{_label(r["category"])}",outcome="{r["outcome"]}"}} {r["n"]}')
     s = one("""SELECT
-        (SELECT AVG(acked_at - created_at) FROM incidents WHERE acked_at IS NOT NULL) mtta,
-        (SELECT AVG(resolved_at - created_at) FROM incidents WHERE resolved_at IS NOT NULL) mttr,
-        (SELECT AVG(agent_latency_s) FROM incidents WHERE agent_latency_s IS NOT NULL) latency,
-        (SELECT COUNT(*) FROM incidents WHERE resolved_by = 'agent')
+        (SELECT AVG(acked_at - created_at) FROM real_incidents WHERE acked_at IS NOT NULL) mtta,
+        (SELECT AVG(resolved_at - created_at) FROM real_incidents WHERE resolved_at IS NOT NULL) mttr,
+        (SELECT AVG(agent_latency_s) FROM real_incidents WHERE agent_latency_s IS NOT NULL) latency,
+        (SELECT COUNT(*) FROM real_incidents WHERE resolved_by = 'agent')
           + (SELECT COUNT(*) FROM support_requests WHERE outcome = 'deflected') deflected,
-        (SELECT COUNT(*) FROM incidents WHERE resolved_by IS NOT NULL)
+        (SELECT COUNT(*) FROM real_incidents WHERE resolved_by IS NOT NULL)
           + (SELECT COUNT(*) FROM support_requests WHERE outcome != 'open') closed""")
     lines += [f"pulse_mtta_seconds {s['mtta'] or 0}", f"pulse_mttr_seconds {s['mttr'] or 0}",
               f"pulse_agent_latency_seconds {s['latency'] or 0}",

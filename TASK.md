@@ -30,7 +30,7 @@
 ## 5. Slack (3:45–4:30)
 - [x] `slack_manifest.yml`; user creates app + tokens
 - [x] alert posts + buttons, auto-summary, `/pulse`, @mention, App Home
-- **Done when:** chaos → Slack alert → thread summary → Ack works live.
+- **Done when:** chaos → Slack alert → thread summary → Ack works live. ✅ verified 2026-10-23
 
 ## 6. Polish (4:30–5:00)
 - [x] README (setup, demo, numbers from eval), REVIEW_LOG, eval table

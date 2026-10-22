@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 import re
+import sys
 import threading
 import time
 
@@ -23,7 +24,12 @@ STATUS_EMOJI = {"open": ":rotating_light:", "acked": ":eyes:", "resolved": ":whi
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("pulse")
-app = App(token=os.environ["SLACK_BOT_TOKEN"])
+BOT_TOKEN, APP_TOKEN = os.getenv("SLACK_BOT_TOKEN", ""), os.getenv("SLACK_APP_TOKEN", "")
+if not (BOT_TOKEN.startswith("xoxb-") and len(BOT_TOKEN) > 20 and APP_TOKEN.startswith("xapp-") and len(APP_TOKEN) > 20):
+    # exit 0 so `restart: on-failure` doesn't loop; the agent CLI and eval still work without Slack
+    log.warning("Slack tokens not set: Slack app disabled")
+    sys.exit(0)
+app = App(token=BOT_TOKEN)
 
 
 def section(text):
@@ -37,8 +43,8 @@ def button(text, action_id, value, style=None):
 
 def incident_blocks(inc):
     target = f"{inc['dag_id']}.{inc['task_id']}" if inc.get("task_id") else inc["dag_id"]
-    text = (f"{STATUS_EMOJI.get(inc['status'], '')} *[{inc['severity']}] {inc['alertname']}* — `{target}`\n{inc['summary']}\n"
-            f"Incident *#{inc['id']}* · status *{inc['status']}*" + (f" · category `{inc['category']}`" if inc.get("category") else ""))
+    text = (f"{STATUS_EMOJI.get(inc['status'], '')} *[{inc['severity']}] {inc['alertname']}* â€” `{target}`\n{inc['summary']}\n"
+            f"Incident *#{inc['id']}* Â· status *{inc['status']}*" + (f" Â· category `{inc['category']}`" if inc.get("category") else ""))
     blocks = [section(text)]
     if inc["status"] == "resolved":
         blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": f"Resolved by *{inc['resolved_by']}*"}]})
@@ -50,7 +56,7 @@ def incident_blocks(inc):
 
 
 def summary_text(res, secs):
-    ev = "\n".join(f"• `{e[:200]}`" for e in res.get("evidence", [])[:4])
+    ev = "\n".join(f"â€¢ `{e[:200]}`" for e in res.get("evidence", [])[:4])
     return (f":robot_face: *Triage: `{res['category']}`* (in {secs}s)\n{res.get('summary', '')}\n{ev}\n"
             f"*Next step:* {res.get('next_step', '-')}\n*Runbook:* `{res.get('runbook', '-')}`")
 
@@ -113,7 +119,7 @@ def on_runbook(ack, body):
     inc = httpx.get(f"{INCIDENTS}/incidents/{body['actions'][0]['value']}").json()
     rb = json.loads(inc["agent_summary"]).get("runbook", "") if inc.get("agent_summary") else ""
     path = RUNBOOK_DIR / f"{pathlib.Path(rb).stem}.md"
-    text = f":book: *{rb}*\n{path.read_text(encoding='utf-8')}" if rb and path.exists() else ":hourglass: no runbook yet — triage still running"
+    text = f":book: *{rb}*\n{path.read_text(encoding='utf-8')}" if rb and path.exists() else ":hourglass: no runbook yet â€” triage still running"
     app.client.chat_postMessage(channel=body["channel"]["id"], thread_ts=body["message"]["ts"], text=text)
 
 
@@ -133,11 +139,11 @@ def health_blocks():
     inc_lines = "\n".join(f"{STATUS_EMOJI[i['status']]} #{i['id']} {i['alertname']} `{i['dag_id']}` {i.get('category') or ''}"
                           for i in open_inc[:8]) or "No open incidents :tada:"
     return [
-        {"type": "header", "text": {"type": "plain_text", "text": "PlatformPulse — platform health"}},
+        {"type": "header", "text": {"type": "plain_text", "text": "PlatformPulse â€” platform health"}},
         section(f"*Services:* {up or 'no data'}"),
         section(f"*Task failures (1h):* {fails}"),
-        section(f"*MTTA* {scalar('pulse_mtta_seconds'):.0f}s · *MTTR* {scalar('pulse_mttr_seconds'):.0f}s · "
-                f"*Deflection* {scalar('pulse_deflection_ratio'):.0%} · *Agent time-to-summary* {scalar('pulse_agent_latency_seconds'):.1f}s"),
+        section(f"*MTTA* {scalar('pulse_mtta_seconds'):.0f}s Â· *MTTR* {scalar('pulse_mttr_seconds'):.0f}s Â· "
+                f"*Deflection* {scalar('pulse_deflection_ratio'):.0%} Â· *Agent time-to-summary* {scalar('pulse_agent_latency_seconds'):.1f}s"),
         {"type": "divider"},
         section(f"*Open incidents ({len(open_inc)})*\n{inc_lines}"),
     ]
@@ -158,7 +164,7 @@ def on_home(event, client):
 def on_mention(event, say):
     question = re.sub(r"<@[^>]+>", "", event["text"]).strip()
     thread = event.get("thread_ts") or event["ts"]
-    say(text=":mag: looking into it…", thread_ts=thread)
+    say(text=":mag: looking into itâ€¦", thread_ts=thread)
     try:
         res = ask(question)
     except Exception as e:
@@ -170,9 +176,9 @@ def on_mention(event, say):
     answer = res.get("answer") or res.get("summary", "")
     say(thread_ts=thread, text=answer, blocks=[
         section(answer),
-        {"type": "context", "elements": [{"type": "mrkdwn", "text": f"category `{res['category']}` · tools: {', '.join(res.get('tools_used', []))}"}]},
-        {"type": "actions", "elements": [button("Solved ✅", "sr_deflected", sr["id"], "primary"),
-                                         button("Escalate to on-call 🙋", "sr_escalated", sr["id"])]}])
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": f"category `{res['category']}` Â· tools: {', '.join(res.get('tools_used', []))}"}]},
+        {"type": "actions", "elements": [button("Solved âœ…", "sr_deflected", sr["id"], "primary"),
+                                         button("Escalate to on-call ðŸ™‹", "sr_escalated", sr["id"])]}])
 
 
 @app.action(re.compile(r"^sr_(deflected|escalated)$"))
@@ -188,4 +194,4 @@ def on_support_outcome(ack, body):
 
 if __name__ == "__main__":
     threading.Thread(target=poll_incidents, daemon=True).start()
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
+    SocketModeHandler(app, APP_TOKEN).start()

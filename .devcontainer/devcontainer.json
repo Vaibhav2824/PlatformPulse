@@ -1,0 +1,30 @@
+{
+  "name": "PlatformPulse",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": { "cpus": 4, "memory": "16gb" },
+  "secrets": {
+    "GROQ_API_KEY": {
+      "description": "Free key from https://console.groq.com. Needed for the triage agent.",
+      "documentationUrl": "https://console.groq.com/keys"
+    },
+    "SLACK_BOT_TOKEN": { "description": "Optional: xoxb- token of a Slack app created from slack_manifest.yml" },
+    "SLACK_APP_TOKEN": { "description": "Optional: xapp- app-level token (connections:write) for Socket Mode" }
+  },
+  "forwardPorts": [3000, 8080, 9090, 8000, 9093, 8081],
+  "portsAttributes": {
+    "3000": { "label": "Grafana CX dashboard", "onAutoForward": "openBrowserOnce" },
+    "8080": { "label": "Airflow (admin/admin)" },
+    "9090": { "label": "Prometheus" },
+    "8000": { "label": "Incident API" },
+    "9093": { "label": "Alertmanager" },
+    "8081": { "label": "Trino" }
+  },
+  "postCreateCommand": "test -f .env || cp .env.example .env",
+  "postStartCommand": "docker compose up -d --build",
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] }
+  }
+}

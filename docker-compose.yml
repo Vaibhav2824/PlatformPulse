@@ -1,10 +1,5 @@
 name: platformpulse
 
-x-env: &env
-  env_file:
-    - path: .env
-      required: false
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -100,10 +95,15 @@ services:
     mem_limit: 256m
 
   pulse:
-    <<: *env
     build: ./pulse
     command: python slack_app.py
     environment:
+      # ${VAR} reads the shell (e.g. Codespaces secrets) first, then .env
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
+      SLACK_CHANNEL: ${SLACK_CHANNEL:-platform-alerts}
       AIRFLOW_URL: http://airflow:8080
       PROM_URL: http://prometheus:9090
       INCIDENT_URL: http://incident:8000

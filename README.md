@@ -28,7 +28,8 @@
   <a href="#-architecture">Architecture</a> ·
   <a href="#-the-mcp-server">MCP server</a> ·
   <a href="ARCHITECTURE.md">Deep dive</a> ·
-  <a href="REVIEW_LOG.md">AI review log</a>
+  <a href="#-built-with-claude-code">Built with Claude Code</a> ·
+  <a href="https://codespaces.new/Vaibhav2824/PlatformPulse?quickstart=1">Try it in Codespaces</a>
 </p>
 
 ---
@@ -60,7 +61,7 @@ You run a small data platform, break it in one of four realistic ways, and watch
 - [The MCP server](#-the-mcp-server)
 - [Slack experience](#-slack-experience)
 - [Project structure](#-project-structure)
-- [Engineering notes](#-engineering-notes)
+- [Built with Claude Code](#-built-with-claude-code)
 - [Docs](#-docs)
 
 ## 📈 Results
@@ -158,11 +159,23 @@ The design decisions are written up in [ARCHITECTURE.md](ARCHITECTURE.md) and [D
 
 ## 🚀 Quick start
 
-**You need** Docker Desktop (8 GB for WSL2/VM), a free [Groq](https://console.groq.com) API key, and a free Slack workspace.
+### Option A: run it in your browser (nothing to install)
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Vaibhav2824/PlatformPulse?quickstart=1)
+
+This spins up the **whole stack in your own free cloud VM** (4 cores / 16 GB). The first build takes about 8–10 minutes, after which Grafana, Airflow, Prometheus and the incident API open as forwarded ports in the **Ports** tab.
+
+- When asked for secrets, add a free [Groq](https://console.groq.com) key as `GROQ_API_KEY` so the agent can run. The Slack tokens are optional.
+- Free GitHub accounts get 120 core-hours a month, which is about **30 hours** of this 4-core machine. **Stop the codespace when you're done.**
+- In the codespace terminal, run `python chaos.py oom` and watch the dashboard.
+
+### Option B: run it locally
+
+**You need** Docker Desktop (8 GB for WSL2/VM), a free [Groq](https://console.groq.com) API key and, optionally, a free Slack workspace.
 
 ```bash
 git clone https://github.com/Vaibhav2824/PlatformPulse.git && cd PlatformPulse
-cp .env.example .env            # add GROQ_API_KEY, SLACK_BOT_TOKEN, SLACK_APP_TOKEN
+cp .env.example .env            # add GROQ_API_KEY (Slack tokens optional)
 docker compose up -d --build
 ```
 
@@ -269,16 +282,30 @@ PlatformPulse/
 └── docker-compose.yml
 ```
 
-## 🛠 Engineering notes
+## 🤖 Built with Claude Code
 
-This was built with **Claude Code** in a 5-hour sprint, with every AI mistake reviewed and logged. [REVIEW_LOG.md](REVIEW_LOG.md) has 10 entries. Some of the ones that mattered:
+PlatformPulse was built in one **5-hour sprint with [Claude Code](https://claude.com/claude-code)** as the pair programmer. I owned the scope, the design calls and the verification. Claude Code wrote most of the code, and nothing was accepted until it had run against the real stack.
 
-- 🔕 **An alert that never fired.** `airflow_pool_starving_tasks` stays at 0 for a truly stuck (0-slot) pool, yet it fired on normal contention. It was replaced with "tasks waiting and none running".
-- 📏 **An eval that measured a healed system.** The harness restored the pool before the agent triaged, so those runs were excluded and the harness was fixed.
-- 📉 **Test traffic in business KPIs.** Eval runs had inflated "deflection" to 95%. Eval incidents are now resolved as `eval` and filtered out by a SQL view.
-- 🪦 **A retired model.** The default LLM had been retired by the provider, so the model is now chosen from the live model list.
+**How the work was split**
 
-Other choices: the agent is **read-only by design** (it recommends and humans remediate), every image and package version is pinned, and the incident service has a `pytest` suite (`docker compose run --rm incident pytest`).
+| Step | Claude Code | Me |
+|---|---|---|
+| Plan | turned the brief into a phase-gated plan, then the [PRD](PRD.md), [ARCHITECTURE](ARCHITECTURE.md) and [DESIGN](DESIGN.md) before any code | set scope (full spec in 5 h), LLM provider, hosting, folder |
+| Build | wrote the compose stack, DAGs, chaos, alert rules, incident service, MCP server, agent and Slack app | created the Slack app and Groq key, approved each phase gate |
+| Verify | ran every phase live: injected each failure, checked the log signature, the alert, the incident row and the agent verdict | checked the Slack flow by hand (alert, thread, Ack, `/pulse`, @mention) |
+| Measure | wrote and ran the eval, and fixed the harness when it was wrong | decided how to handle the quota limit (switch models, label every row) |
+
+**Critical review, not autopilot.** Every time Claude Code's output was wrong, the fix and the reason went into **[REVIEW_LOG.md](REVIEW_LOG.md)**. There are 11 entries, and **9 of them only showed up when the real stack ran**, never in code review:
+
+| # | What looked fine | What running it revealed |
+|---|---|---|
+| 5 | a "stuck pool" alert on `airflow_pool_starving_tasks` | it **stays 0** for a truly stuck pool, and fired on normal contention |
+| 7 | the default LLM `llama-3.3-70b-versatile` | `404 model_not_found`: the provider had retired it |
+| 9 | the eval harness | it restored the pool **before** the agent triaged, so it was measuring a healed system |
+| 10 | resolving eval incidents as `agent` | it inflated dashboard "deflection" to 95%, so test traffic was polluting KPIs |
+| 11 | dashboard JSON edited via PowerShell | a hidden UTF-8 BOM, so Grafana silently kept the old dashboard |
+
+Other design choices: the agent is **read-only by design** (it recommends and humans remediate), every image and package version is pinned, and the incident service has a `pytest` suite (`docker compose run --rm incident pytest`).
 
 ## 📚 Docs
 
@@ -287,10 +314,7 @@ Other choices: the agent is **read-only by design** (it recommends and humans re
 | [PRD.md](PRD.md) | problem, users, goals, success metrics, JD-gap mapping |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | components, data flow, memory budget, design rationale |
 | [DESIGN.md](DESIGN.md) | metrics, alert rules, DB schema, API, MCP contracts, Slack UX |
-| [RULES.md](RULES.md) | sprint working agreement |
-| [TASK.md](TASK.md) | phase-gated build checklist |
-| [REVIEW_LOG.md](REVIEW_LOG.md) | every correction made to AI-generated code |
-| [SLIDES.md](SLIDES.md) | 5-slide team presentation (Marp) |
+| [REVIEW_LOG.md](REVIEW_LOG.md) | every correction made to Claude Code's output, with the reason |
 | [notebooks/postmortem.ipynb](notebooks/postmortem.ipynb) | postmortem analysis |
 
 ---

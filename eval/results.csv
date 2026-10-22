@@ -11,3 +11,8 @@ openai/gpt-oss-120b,3,timeout,timeout,True,25,110.8,8.3,119.1,get_dag_status>get
 openai/gpt-oss-120b,4,oom,oom,True,27,22.6,34.7,57.3,get_dag_status>get_task_logs>search_runbooks
 openai/gpt-oss-120b,4,bad_schema,bad_schema,True,28,23.6,20.5,44.1,get_dag_status>get_task_logs>search_runbooks
 openai/gpt-oss-120b,4,timeout,timeout,True,29,103.9,7.9,111.8,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-20b,1,stuck,stuck,True,46,45.8,91.4,137.2,get_dag_status>get_dag_status>query_prometheus>query_prometheus>run_trino_query>search_runbooks
+openai/gpt-oss-20b,2,stuck,error,False,47,,,,
+openai/gpt-oss-20b,3,stuck,stuck,True,48,45.4,15.6,61.0,get_dag_status>run_trino_query>run_trino_query>search_runbooks
+openai/gpt-oss-20b,4,stuck,stuck,True,49,48.3,23.3,71.6,get_dag_status>run_trino_query>run_trino_query>search_runbooks
+openai/gpt-oss-20b,5,stuck,stuck,True,50,46.4,147.7,194.1,get_dag_status>get_dag_status>query_prometheus>query_prometheus>run_trino_query>run_trino_query>search_runbooks

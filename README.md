@@ -19,7 +19,15 @@ Details: [ARCHITECTURE.md](ARCHITECTURE.md) · [DESIGN.md](DESIGN.md) · [PRD.md
 
 The eval injects each of the 4 failure types 5 times, interleaved, and runs the whole loop each time: chaos → alert → incident → agent triage. Raw rows are in [`eval/results.csv`](eval/results.csv).
 
-<!-- EVAL_TABLE -->
+| Failure type | Model | Runs | Accuracy | Median detect (s) | Median time-to-summary (s) | p90 time-to-summary (s) |
+|---|---|---|---|---|---|---|
+| oom | `openai/gpt-oss-120b` | 4 | 100% | 28.4 | 27.5 | 34.7 |
+| bad_schema | `openai/gpt-oss-120b` | 4 | 100% | 26.7 | 19.4 | 30.0 |
+| timeout | `openai/gpt-oss-120b` | 4 | 100% | 107.8 | 8.1 | 8.5 |
+| stuck | `openai/gpt-oss-20b` | 5 | 80% | 46.1 | 57.4 | 147.7 |
+| all | `all` | 17 | 94% | 40.6 | 19.4 | 34.7 |
+
+*Notes:* oom/bad_schema/timeout ran on `gpt-oss-120b`. That model's Groq free tier (200k tokens/day) ran out, so the stuck runs used `gpt-oss-20b`. One stuck run errored and counts as a miss. Three stuck runs recorded under an eval bug (pool restored before triage) are excluded and kept in `eval/stuck_runs_invalid.csv` (see REVIEW_LOG #9). Detect for timeout includes the 90s `execution_timeout` by design.
 
 ## Quick start
 Requirements: Docker Desktop (8 GB for WSL2), a free [Groq](https://console.groq.com) key, and a free Slack workspace.

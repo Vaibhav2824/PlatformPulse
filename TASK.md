@@ -23,17 +23,17 @@
 
 ## 4. MCP + agent (2:45–3:45)
 - [x] `mcp_server.py` 6 tools, 12 runbooks, fastembed search
-- [ ] `agent.py` triage + Q&A
-- [ ] `eval.py` started (4 × 5)
+- [x] `agent.py` triage + Q&A
+- [x] `eval.py` (17 valid runs)
 - **Done when:** agent correctly diagnoses each of the 4 types once; eval running.
 
 ## 5. Slack (3:45–4:30)
-- [ ] `slack_manifest.yml`; user creates app + tokens
-- [ ] alert posts + buttons, auto-summary, `/pulse`, @mention, App Home
+- [x] `slack_manifest.yml`; user creates app + tokens
+- [x] alert posts + buttons, auto-summary, `/pulse`, @mention, App Home
 - **Done when:** chaos → Slack alert → thread summary → Ack works live.
 
 ## 6. Polish (4:30–5:00)
-- [ ] README (setup, demo, numbers from eval), REVIEW_LOG, eval table
-- [ ] SLIDES.md (5 slides), `notebooks/postmortem.ipynb`
+- [x] README (setup, demo, numbers from eval), REVIEW_LOG, eval table
+- [x] SLIDES.md (5 slides), `notebooks/postmortem.ipynb`
 - [ ] Demo GIF (user, ScreenToGif)
 - **Cut order if late:** notebook → App Home → slides.

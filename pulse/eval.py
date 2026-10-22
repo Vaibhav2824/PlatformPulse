@@ -47,7 +47,9 @@ def run_one(n, chaos_type):
         # triage while the platform is still broken, like a real on-call would
         result, triage_s = triage_incident(inc["id"])
     except Exception as e:  # one bad run (e.g. LLM rate limit) is a data point, not a crash
-        print(f"run {n} {chaos_type} errored: {e}", flush=True)
+        while getattr(e, "exceptions", None):  # unwrap anyio ExceptionGroups to the real cause
+            e = e.exceptions[0]
+        print(f"run {n} {chaos_type} errored: {type(e).__name__}: {e}", flush=True)
         return {"model": MODEL, "run": n, "expected": chaos_type, "predicted": "error", "correct": False, "incident_id": inc["id"]}
     finally:
         if chaos_type == "stuck":
@@ -81,8 +83,8 @@ def write_md(rows):
         acc = sum(r["correct"] for r in rs) / len(rs)
         tts = [r["triage_s"] for r in ok]
         det = [r["detect_s"] for r in ok]
-        lines.append(f"| {t} | `{m}` | {len(rs)} | {acc:.0%} | {statistics.median(det) if det else '-'} | "
-                     f"{statistics.median(tts) if tts else '-'} | {p90(tts) if tts else '-'} |")
+        lines.append(f"| {t} | `{m}` | {len(rs)} | {acc:.0%} | {round(statistics.median(det), 1) if det else '-'} | "
+                     f"{round(statistics.median(tts), 1) if tts else '-'} | {p90(tts) if tts else '-'} |")
     with open(os.path.join(OUT, "results.md"), "w") as f:
         f.write(f"# Eval results ({time.strftime('%Y-%m-%d %H:%M')}, Groq models per row)\n\n"
                 "time-to-summary = agent triage time after the incident opens; detect = chaos trigger -> incident row.\n\n"

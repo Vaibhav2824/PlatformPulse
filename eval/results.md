@@ -1,10 +1,11 @@
-# Eval results (2026-10-22 17:23, model `openai/gpt-oss-120b`)
+# Eval results (2026-10-22 18:14, Groq models per row)
 
 time-to-summary = agent triage time after the incident opens; detect = chaos trigger -> incident row.
 
-| Failure type | Runs | Accuracy | Median detect (s) | Median time-to-summary (s) | p90 time-to-summary (s) |
-|---|---|---|---|---|---|
-| oom | 5 | 80% | 28.45 | 27.450000000000003 | 34.7 |
-| bad_schema | 5 | 80% | 26.700000000000003 | 19.35 | 30.0 |
-| timeout | 5 | 80% | 107.75 | 8.100000000000001 | 8.5 |
-| all | 15 | 80% | 30.35 | 17.799999999999997 | 31.8 |
+| Failure type | Model | Runs | Accuracy | Median detect (s) | Median time-to-summary (s) | p90 time-to-summary (s) |
+|---|---|---|---|---|---|---|
+| oom | `openai/gpt-oss-120b` | 4 | 100% | 28.4 | 27.5 | 34.7 |
+| bad_schema | `openai/gpt-oss-120b` | 4 | 100% | 26.7 | 19.4 | 30.0 |
+| timeout | `openai/gpt-oss-120b` | 4 | 100% | 107.8 | 8.1 | 8.5 |
+| stuck | `openai/gpt-oss-20b` | 5 | 80% | 46.1 | 57.4 | 147.7 |
+| all | `all` | 17 | 94% | 40.6 | 19.4 | 34.7 |

@@ -1,4 +1,4 @@
-﻿{
+{
   "uid": "platformpulse-cx",
   "title": "PlatformPulse \u2014 Customer Experience",
   "tags": [
@@ -48,7 +48,9 @@
             "uid": "prom"
           },
           "expr": "up",
-          "legendFormat": "{{job}}"
+          "legendFormat": "{{job}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -111,7 +113,9 @@
             "uid": "prom"
           },
           "expr": "pulse_incidents_open",
-          "legendFormat": "open"
+          "legendFormat": "open",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -156,7 +160,9 @@
             "uid": "prom"
           },
           "expr": "pulse_mtta_seconds",
-          "legendFormat": "MTTA"
+          "legendFormat": "MTTA",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -189,7 +195,9 @@
             "uid": "prom"
           },
           "expr": "pulse_mttr_seconds",
-          "legendFormat": "MTTR"
+          "legendFormat": "MTTR",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -222,7 +230,9 @@
             "uid": "prom"
           },
           "expr": "pulse_deflection_ratio",
-          "legendFormat": "deflection"
+          "legendFormat": "deflection",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -294,8 +304,8 @@
             "type": "prometheus",
             "uid": "prom"
           },
-          "expr": "airflow_pool_starving_tasks{pool=\"spark_pool\"}",
-          "legendFormat": "starving tasks"
+          "expr": "airflow_pool_scheduled_slots{pool=\"spark_pool\"} + airflow_pool_queued_slots{pool=\"spark_pool\"}",
+          "legendFormat": "waiting tasks"
         },
         {
           "refId": "C",
@@ -348,7 +358,9 @@
             "uid": "prom"
           },
           "expr": "sum by (category) (pulse_incidents_total)",
-          "legendFormat": "{{category}}"
+          "legendFormat": "{{category}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -410,7 +422,9 @@
             "uid": "prom"
           },
           "expr": "sum by (category) (pulse_support_requests_total)",
-          "legendFormat": "{{category}}"
+          "legendFormat": "{{category}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -441,7 +455,9 @@
             "uid": "prom"
           },
           "expr": "pulse_agent_latency_seconds",
-          "legendFormat": "avg"
+          "legendFormat": "avg",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {

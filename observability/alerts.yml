@@ -1,0 +1,44 @@
+groups:
+  - name: platformpulse
+    rules:
+      - alert: AirflowTaskFailed
+        # second branch catches a task's *first* failure: a brand-new counter series has no increase()
+        expr: |
+          (increase(airflow_ti_finish{state="failed"}[1m]) > 0)
+          or (airflow_ti_finish{state="failed"} unless airflow_ti_finish{state="failed"} offset 1m)
+        labels: { severity: critical }
+        annotations:
+          summary: "Task {{ $labels.dag_id }}.{{ $labels.task_id }} failed"
+
+      - alert: AirflowTaskStarving
+        # waiting tasks but nothing running = no progress. (airflow_pool_starving_tasks stays 0 for a 0-slot pool,
+        # and plain contention -- all slots busy -- always has running > 0, so it doesn't false-positive.)
+        expr: |
+          max by (pool) (airflow_pool_scheduled_slots{pool!=""} + airflow_pool_queued_slots{pool!=""}) > 0
+          and max by (pool) (airflow_pool_running_slots{pool!=""}) == 0
+        for: 30s
+        labels: { severity: critical }
+        annotations:
+          summary: "Tasks waiting in pool {{ $labels.pool }} but none running (stuck)"
+
+      - alert: SchedulerHeartbeatMissing
+        expr: rate(airflow_scheduler_heartbeat[1m]) == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Airflow scheduler stopped heartbeating"
+
+      - alert: DagRunSlow
+        expr: |
+          max by (dag_id) (rate(airflow_dagrun_duration_sum{state="success"}[5m])
+            / rate(airflow_dagrun_duration_count{state="success"}[5m])) > 150
+        labels: { severity: warning }
+        annotations:
+          summary: "DAG {{ $labels.dag_id }} successful runs averaging > 150s"
+
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "Scrape target {{ $labels.job }} is down"

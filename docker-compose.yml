@@ -1,0 +1,121 @@
+name: platformpulse
+
+x-env: &env
+  env_file:
+    - path: .env
+      required: false
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow # dev-only
+      POSTGRES_DB: airflow
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+    mem_limit: 256m
+
+  airflow:
+    image: platformpulse-airflow:latest
+    build: ./airflow
+    depends_on:
+      postgres: { condition: service_healthy }
+    command: bash -c "airflow pools set spark_pool 2 'PySpark local jobs' && exec airflow standalone"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "15"
+      AIRFLOW__METRICS__STATSD_ON: "True"
+      AIRFLOW__METRICS__STATSD_HOST: statsd-exporter
+      AIRFLOW__METRICS__STATSD_PORT: "9125"
+      AIRFLOW__METRICS__STATSD_PREFIX: airflow
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin # dev-only
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/jobs:/opt/airflow/jobs
+      - ./airflow/data:/opt/airflow/data
+      - airflow_logs:/opt/airflow/logs
+    ports: ["8080:8080"]
+    mem_limit: 2560m
+
+  trino:
+    image: trinodb/trino:470
+    depends_on: [postgres]
+    volumes:
+      - ./trino/etc/jvm.config:/etc/trino/jvm.config:ro
+      - ./trino/etc/catalog:/etc/trino/catalog:ro
+    ports: ["8081:8080"]
+    mem_limit: 1536m
+
+  statsd-exporter:
+    image: prom/statsd-exporter:v0.28.0
+    command: ["--statsd.mapping-config=/etc/statsd/mapping.yml"]
+    volumes: [./observability/statsd_mapping.yml:/etc/statsd/mapping.yml:ro]
+    ports: ["9102:9102"]
+    mem_limit: 64m
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=2d", "--web.enable-lifecycle"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["9090:9090"]
+    mem_limit: 300m
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes: [./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro]
+    ports: ["9093:9093"]
+    mem_limit: 64m
+
+  incident:
+    build: ./incident_service
+    environment: { DB_PATH: /data/incidents.db }
+    volumes: [incident_data:/data]
+    ports: ["8000:8000"]
+    mem_limit: 128m
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/customer_experience.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    mem_limit: 256m
+
+  pulse:
+    <<: *env
+    build: ./pulse
+    command: python slack_app.py
+    environment:
+      AIRFLOW_URL: http://airflow:8080
+      PROM_URL: http://prometheus:9090
+      INCIDENT_URL: http://incident:8000
+      TRINO_HOST: trino
+    volumes:
+      - ./pulse:/app
+      - ./chaos.py:/app/chaos.py:ro
+      - ./eval:/eval
+    restart: on-failure
+    mem_limit: 768m
+
+volumes:
+  pgdata:
+  airflow_logs:
+  incident_data:

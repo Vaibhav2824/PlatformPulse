@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files: [/etc/prometheus/alerts.yml]
+
+alerting:
+  alertmanagers:
+    - static_configs: [{ targets: ["alertmanager:9093"] }]
+
+scrape_configs:
+  - job_name: airflow
+    static_configs: [{ targets: ["statsd-exporter:9102"] }]
+  - job_name: incident-service
+    static_configs: [{ targets: ["incident:8000"] }]
+  - job_name: trino
+    http_headers:
+      X-Trino-User: { values: ["prometheus"] }
+    fallback_scrape_protocol: PrometheusText0.0.4
+    static_configs: [{ targets: ["trino:8080"] }]
+  - job_name: prometheus
+    static_configs: [{ targets: ["localhost:9090"] }]

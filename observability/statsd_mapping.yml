@@ -1,0 +1,19 @@
+defaults:
+  observer_type: histogram
+  histogram_options:
+    buckets: [1, 5, 10, 30, 60, 120, 300]
+mappings:
+  - match: "airflow.ti.finish.*.*.*"
+    name: airflow_ti_finish
+    labels: { dag_id: "$1", task_id: "$2", state: "$3" }
+  - match: "airflow.dag.*.*.duration"
+    name: airflow_task_duration
+    labels: { dag_id: "$1", task_id: "$2" }
+  - match: "airflow.dagrun.duration.*.*"
+    name: airflow_dagrun_duration
+    labels: { state: "$1", dag_id: "$2" }
+  - match: "airflow.pool.*.*"
+    name: "airflow_pool_${1}"
+    labels: { pool: "$2" }
+  - match: "airflow.scheduler_heartbeat"
+    name: airflow_scheduler_heartbeat

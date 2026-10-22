@@ -1,0 +1,9 @@
+mcp==1.9.4
+openai==1.82.0
+httpx==0.28.1
+numpy==2.2.6
+fastembed==0.6.0
+trino==0.333.0
+slack_bolt==1.23.0
+slack_sdk==3.35.0
+pydantic==2.11.7

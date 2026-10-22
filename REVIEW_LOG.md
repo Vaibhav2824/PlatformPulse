@@ -1,0 +1,12 @@
+# REVIEW_LOG — corrections to Claude Code's output
+
+Each entry is a case where AI-generated code or config was wrong and got corrected, with the reason.
+
+| # | Area | What the AI produced | Problem | Fix / why |
+|---|---|---|---|---|
+| 1 | `airflow/Dockerfile` | `pip install apache-airflow==2.10.5 pyspark==3.5.5 --constraint …` in one step | Build failed: `ResolutionImpossible`. The Airflow constraints file pins a py4j/pyspark that conflicts. | Install pyspark in its own step without the constraints file. Constraints only protect Airflow's own dependency set. |
+| 2 | `incident_service/app.py` webhook | A `created += bool(rowid) and q("SELECT changes()")…` counter | Dead, wrong logic: `lastrowid` is set even when `INSERT OR IGNORE` skips a row, and the counter was never returned. | Deleted it. Dedupe is enforced by `UNIQUE(fingerprint, starts_at)`, so no app-side counting is needed. |
+| 3 | `incident_service/app.py` `/metrics` | An obfuscated `chr(32).join(...)` query, then a "fix" that put `\"` inside an f-string expression | The second version is a **SyntaxError on Python 3.11**: backslashes inside f-string expressions only became legal in 3.12, and the container runs 3.11. | Pulled the query into a plain variable. Lesson: check language-version features against the runtime, not the host (3.14). |
+| 4 | `pulse/requirements.txt` | Pinned `mcp==1.9.4` without pinning pydantic | `ImportError: eval_type_backport`: mcp 1.9.4 imports a private pydantic API that later pydantic releases removed. | Pinned `pydantic==2.11.7`. Pinning a library while leaving its transitive deps floating isn't reproducible. |
+| 5 | `observability/alerts.yml` stuck rule | `max by (pool)(airflow_pool_starving_tasks) > 0` | Tested live: it stays **0** for a 0-slot pool (the real "stuck" case) but fired on normal slot contention, so it was wrong in both directions. An unlabelled `pool.starving_tasks` series also created incidents with a blank pool. | Now `(scheduled+queued) > 0 and running == 0` for 30s with `pool!=""`: it fires only when there's no progress at all. |
+| 6 | `observability/alerts.yml` DagRunSlow | 60s threshold | Fired on healthy runs: 4 Spark JVMs share 4 CPUs, so a normal run with queueing takes over 60s. | Raised to 150s, based on the measured runs. |

@@ -15,7 +15,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import BadRequestError, OpenAI, RateLimitError
 
-MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 INCIDENTS = os.getenv("INCIDENT_URL", "http://localhost:8000")
 MCP_SERVER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_server.py")
 MAX_STEPS = 8
@@ -26,6 +26,7 @@ QA_CATEGORIES = {"incident", "data_question", "how_to", "other"}
 TRIAGE_PROMPT = """You are PlatformPulse, the on-call triage agent for a data platform (Airflow running PySpark jobs, Trino, Prometheus).
 Investigate with tools before answering. Usual path: get_dag_status (find the failed or never-started task and its
 try_number) -> get_task_logs -> search_runbooks with the key error line -> query_prometheus if useful.
+Skip run_trino_query during triage unless the logs are missing and you need run history.
 Classify into exactly one category:
 - oom: java.lang.OutOfMemoryError / Java heap space / memory kill
 - bad_schema: AnalysisException, unresolved or missing column, schema mismatch

@@ -71,7 +71,7 @@ def write_md(rows):
         lines.append(f"| {t} | {len(rs)} | {acc:.0%} | {statistics.median(det) if det else '-'} | "
                      f"{statistics.median(tts) if tts else '-'} | {p90(tts) if tts else '-'} |")
     with open(os.path.join(OUT, "results.md"), "w") as f:
-        f.write(f"# Eval results ({time.strftime('%Y-%m-%d %H:%M')}, model `{os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')}`)\n\n"
+        f.write(f"# Eval results ({time.strftime('%Y-%m-%d %H:%M')}, model `{os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')}`)\n\n"
                 "time-to-summary = agent triage time after the incident opens; detect = chaos trigger -> incident row.\n\n"
                 + "\n".join(lines) + "\n")
 

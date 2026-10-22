@@ -53,7 +53,9 @@ def chat(messages, tools):
         try:
             return llm.chat.completions.create(**kw).choices[0].message
         except RateLimitError as e:
-            time.sleep(min(60.0, float(e.response.headers.get("retry-after", 10))))
+            wait = float(e.response.headers.get("retry-after", 10))
+            print(f"groq 429 (retry in {wait}s): {e.message[:300]}", file=sys.stderr, flush=True)
+            time.sleep(min(60.0, wait))
         except BadRequestError as e:
             if "tool_use_failed" not in str(e):
                 raise

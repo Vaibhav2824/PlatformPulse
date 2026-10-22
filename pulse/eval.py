@@ -9,13 +9,14 @@ import time
 import httpx
 
 import chaos
-from agent import triage_incident
+from agent import MODEL, triage_incident
 
 INCIDENTS = os.getenv("INCIDENT_URL", "http://localhost:8000")
 OUT = os.getenv("EVAL_DIR", "/eval")
 TYPES = ["oom", "bad_schema", "timeout", "stuck"]
 DETECT_TIMEOUT_S = 300
-FIELDS = ["run", "expected", "predicted", "correct", "incident_id", "detect_s", "triage_s", "total_s", "tools_used"]
+STUCK_COOLDOWN_S = 30
+FIELDS = ["model", "run", "expected", "predicted", "correct", "incident_id", "detect_s", "triage_s", "total_s", "tools_used"]
 
 
 def last_incident_id():
@@ -40,15 +41,22 @@ def run_one(n, chaos_type):
     t0 = time.time()
     chaos.trigger(chaos_type)
     inc = wait_for_incident(since, chaos_type)
-    if chaos_type == "stuck":
-        chaos.set_pool(chaos.POOL_SLOTS)
-    if not inc:
-        return {"run": n, "expected": chaos_type, "predicted": "no_incident", "correct": False}
-    result, triage_s = triage_incident(inc["id"])
+    try:
+        if not inc:
+            return {"model": MODEL, "run": n, "expected": chaos_type, "predicted": "no_incident", "correct": False}
+        # triage while the platform is still broken, like a real on-call would
+        result, triage_s = triage_incident(inc["id"])
+    except Exception as e:  # one bad run (e.g. LLM rate limit) is a data point, not a crash
+        print(f"run {n} {chaos_type} errored: {e}", flush=True)
+        return {"model": MODEL, "run": n, "expected": chaos_type, "predicted": "error", "correct": False, "incident_id": inc["id"]}
+    finally:
+        if chaos_type == "stuck":
+            chaos.set_pool(chaos.POOL_SLOTS)
+            time.sleep(STUCK_COOLDOWN_S)  # let the alert clear so the next stuck run opens a new incident
     correct = result["category"] == chaos_type
     httpx.post(f"{INCIDENTS}/incidents/{inc['id']}/resolve", params={"by": "agent" if correct else "human"})
     detect_s = round(inc["created_at"] - t0, 1)
-    return {"run": n, "expected": chaos_type, "predicted": result["category"], "correct": correct,
+    return {"model": MODEL, "run": n, "expected": chaos_type, "predicted": result["category"], "correct": correct,
             "incident_id": inc["id"], "detect_s": detect_s, "triage_s": triage_s,
             "total_s": round(detect_s + triage_s, 1), "tools_used": ">".join(result.get("tools_used", []))}
 
@@ -58,37 +66,47 @@ def p90(xs):
 
 
 def write_md(rows):
-    lines = ["| Failure type | Runs | Accuracy | Median detect (s) | Median time-to-summary (s) | p90 time-to-summary (s) |",
-             "|---|---|---|---|---|---|"]
-    for t in TYPES + ["all"]:
-        rs = [r for r in rows if t in ("all", r["expected"])]
+    for r in rows:  # rows read back from CSV are strings
+        r["correct"] = str(r["correct"]) == "True"
+        for k in ("detect_s", "triage_s"):
+            r[k] = float(r[k]) if r.get(k) not in (None, "") else None
+    lines = ["| Failure type | Model | Runs | Accuracy | Median detect (s) | Median time-to-summary (s) | p90 time-to-summary (s) |",
+             "|---|---|---|---|---|---|---|"]
+    groups = sorted({(r["expected"], r["model"]) for r in rows}, key=lambda g: (TYPES.index(g[0]), g[1]))
+    for t, m in groups + [("all", "all")]:
+        rs = [r for r in rows if t == "all" or (r["expected"], r["model"]) == (t, m)]
         ok = [r for r in rs if r.get("triage_s") is not None]
         if not rs:
             continue
         acc = sum(r["correct"] for r in rs) / len(rs)
         tts = [r["triage_s"] for r in ok]
         det = [r["detect_s"] for r in ok]
-        lines.append(f"| {t} | {len(rs)} | {acc:.0%} | {statistics.median(det) if det else '-'} | "
+        lines.append(f"| {t} | `{m}` | {len(rs)} | {acc:.0%} | {statistics.median(det) if det else '-'} | "
                      f"{statistics.median(tts) if tts else '-'} | {p90(tts) if tts else '-'} |")
     with open(os.path.join(OUT, "results.md"), "w") as f:
-        f.write(f"# Eval results ({time.strftime('%Y-%m-%d %H:%M')}, model `{os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')}`)\n\n"
+        f.write(f"# Eval results ({time.strftime('%Y-%m-%d %H:%M')}, Groq models per row)\n\n"
                 "time-to-summary = agent triage time after the incident opens; detect = chaos trigger -> incident row.\n\n"
                 + "\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":
+    # usage: eval.py [runs=5] [types=oom,bad_schema,timeout,stuck] [first_run_number=1]; appends to results.csv
     runs = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+    types = sys.argv[2].split(",") if len(sys.argv) > 2 else TYPES
+    first = int(sys.argv[3]) if len(sys.argv) > 3 else 1
     os.makedirs(OUT, exist_ok=True)
-    rows = []
-    with open(os.path.join(OUT, "results.csv"), "w", newline="") as f:
+    path = os.path.join(OUT, "results.csv")
+    is_new = not os.path.exists(path)
+    with open(path, "a", newline="") as f:
         w = csv.DictWriter(f, FIELDS)
-        w.writeheader()
-        for n in range(1, runs + 1):
-            for t in TYPES:  # interleaved so the same DAG's alert clears between its runs
+        if is_new:
+            w.writeheader()
+        for n in range(first, first + runs):
+            for t in types:  # interleaved so the same DAG's alert clears between its runs
                 row = run_one(n, t)
-                rows.append(row)
                 w.writerow(row)
                 f.flush()
                 print(row, flush=True)
-    write_md(rows)
+    with open(path, newline="") as f:
+        write_md(list(csv.DictReader(f)))
     print(open(os.path.join(OUT, "results.md")).read())

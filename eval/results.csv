@@ -1,2 +1,13 @@
-run,expected,predicted,correct,incident_id,detect_s,triage_s,total_s,tools_used
-1,oom,oom,True,15,35.8,13.6,49.4,get_dag_status>get_task_logs>search_runbooks
+model,run,expected,predicted,correct,incident_id,detect_s,triage_s,total_s,tools_used
+openai/gpt-oss-120b,1,oom,oom,True,15,35.8,13.6,49.4,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,1,bad_schema,bad_schema,True,16,30.5,30.0,60.5,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,1,timeout,timeout,True,17,108.1,8.5,116.6,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,2,oom,oom,True,19,30.2,31.8,62.0,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,2,bad_schema,bad_schema,True,20,28.1,17.4,45.5,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,2,timeout,timeout,True,21,107.4,7.0,114.4,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,3,oom,oom,True,23,26.7,23.1,49.8,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,3,bad_schema,bad_schema,True,24,25.3,18.2,43.5,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,3,timeout,timeout,True,25,110.8,8.3,119.1,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,4,oom,oom,True,27,22.6,34.7,57.3,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,4,bad_schema,bad_schema,True,28,23.6,20.5,44.1,get_dag_status>get_task_logs>search_runbooks
+openai/gpt-oss-120b,4,timeout,timeout,True,29,103.9,7.9,111.8,get_dag_status>get_task_logs>search_runbooks

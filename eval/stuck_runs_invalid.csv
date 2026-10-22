@@ -1,0 +1,3 @@
+1,stuck,stuck,True,18,50.8,228.0,278.8,get_dag_status>get_dag_status>get_dag_status>query_prometheus>query_prometheus>query_prometheus>get_incidents>query_prometheus
+2,stuck,stuck,True,22,51.7,147.4,199.1,get_dag_status>get_dag_status>query_prometheus>query_prometheus>get_incidents>get_task_logs>query_prometheus>query_prometheus
+3,stuck,other,False,26,44.7,125.5,170.2,get_dag_status>get_dag_status>query_prometheus>query_prometheus>run_trino_query>run_trino_query>run_trino_query>search_runbooks

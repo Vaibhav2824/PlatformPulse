@@ -295,7 +295,7 @@ PlatformPulse was built in one **5-hour sprint with [Claude Code](https://claude
 | Verify | ran every phase live: injected each failure, checked the log signature, the alert, the incident row and the agent verdict | checked the Slack flow by hand (alert, thread, Ack, `/pulse`, @mention) |
 | Measure | wrote and ran the eval, and fixed the harness when it was wrong | decided how to handle the quota limit (switch models, label every row) |
 
-**Critical review, not autopilot.** Every time Claude Code's output was wrong, the fix and the reason went into **[REVIEW_LOG.md](REVIEW_LOG.md)**. There are 11 entries, and **9 of them only showed up when the real stack ran**, never in code review:
+**Critical review, not autopilot.** Every time Claude Code's output was wrong, the fix and the reason went into **[REVIEW_LOG.md](REVIEW_LOG.md)**. There are 13 entries, and **most of them only showed up when the real stack ran**, never in code review:
 
 | # | What looked fine | What running it revealed |
 |---|---|---|
@@ -304,6 +304,7 @@ PlatformPulse was built in one **5-hour sprint with [Claude Code](https://claude
 | 9 | the eval harness | it restored the pool **before** the agent triaged, so it was measuring a healed system |
 | 10 | resolving eval incidents as `agent` | it inflated dashboard "deflection" to 95%, so test traffic was polluting KPIs |
 | 11 | dashboard JSON edited via PowerShell | a hidden UTF-8 BOM, so Grafana silently kept the old dashboard |
+| 13 | a "first failure" alert rule | on a **fresh** stack it opened 3 false incidents that never showed locally |
 
 Other design choices: the agent is **read-only by design** (it recommends and humans remediate), every image and package version is pinned, and the incident service has a `pytest` suite (`docker compose run --rm incident pytest`).
 
